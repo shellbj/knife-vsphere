@@ -1,8 +1,8 @@
-require 'rake/gempackagetask'
+require 'rubygems/package_task'
 require 'fileutils'
 
 spec = Gem::Specification.load(Dir['*.gemspec'].first)
-gem = Rake::GemPackageTask.new(spec)
+gem = Gem::PackageTask.new(spec)
 gem.define
 
 desc "Push gem to rubygems.org"

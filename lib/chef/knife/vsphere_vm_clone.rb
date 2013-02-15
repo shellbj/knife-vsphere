@@ -62,6 +62,10 @@ class Chef::Knife::VsphereVmClone < Chef::Knife::BaseVsphereCommand
 		:long => "--cgw CUST_GW",
 		:description => "CIDR IP of gateway for customization"
 
+	option :customization_mac,
+		:long => "--cmac CUST_MAC",
+		:description => "The MAC address of a network adapter for customization"
+
 	option :customization_hostname,
 		:long => "--chostname CUST_HOSTNAME",
 		:description => "Unqualified hostname for customization"
@@ -194,6 +198,27 @@ class Chef::Knife::VsphereVmClone < Chef::Knife::BaseVsphereCommand
 		puts "Cloning template #{config[:source_vm]} to new VM #{vmname}"
 		task.wait_for_completion
 		puts "Finished creating virtual machine #{vmname}"
+
+          if get_config(:customization_mac)
+            puts "Changing the MAC #{config[:customization_mac]}"
+            target_vm = find_in_folder(src_folder, RbVmomi::VIM::VirtualMachine, vmname) or
+		abort "VM not found"
+            card = target_vm.config.hardware.device.grep(RbVmomi::VIM::VirtualEthernetCard).find { |x| x.deviceInfo.label == "Network adapter 1" } or
+              abort "Can't find source network card to customize"
+
+            card.macAddress = get_config(:customization_mac)
+
+            card_spec = {
+              :deviceChange => [
+                                {
+                                  :operation => :edit,
+                                  :device => card
+                                }
+                               ]
+            }
+            target_vm.ReconfigVM_Task(:spec => card_spec).wait_for_completion
+            puts "Finished Changing the MAC #{config[:customization_mac]}"
+          end
 
 		if get_config(:power) || get_config(:bootstrap)
 			vm = find_in_folder(dest_folder, RbVmomi::VIM::VirtualMachine, vmname) or
